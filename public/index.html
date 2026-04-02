@@ -15,6 +15,9 @@
       <label for="player-name">Your Name</label>
       <input id="player-name" type="text" maxlength="20" placeholder="Player name" />
 
+      <label for="room-password">Room Password</label>
+      <input id="room-password" type="password" maxlength="32" placeholder="Enter password" />
+
       <div class="setup-actions">
         <button id="create-room-btn">Create Room</button>
       </div>
@@ -33,16 +36,22 @@
         <div class="top-actions">
           <button id="start-btn" class="hidden">Start Game</button>
           <button id="roll-btn">Roll Dice</button>
+          <button id="exit-btn" class="exit-btn" type="button">Exit Room</button>
+          <button id="dice-widget" class="dice-widget" type="button" aria-label="Dice">
+            <span id="dice-face" class="dice-face">1</span>
+            <span id="dice-help" class="dice-help">Tap to roll</span>
+          </button>
         </div>
       </div>
 
       <p id="turn-status" class="status"></p>
+      <p id="board-tip" class="board-tip">Tip: when dice is rolled, click your highlighted token on the board to move.</p>
       <div id="move-actions" class="move-actions"></div>
 
       <div class="game-grid">
         <canvas id="board" width="720" height="720"></canvas>
 
-        <aside>
+        <aside class="side-panel">
           <h3>Players</h3>
           <ul id="players-list" class="players"></ul>
 

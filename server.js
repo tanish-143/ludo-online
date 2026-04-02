@@ -16,6 +16,10 @@ const START_INDEX = {
   blue: 39,
 };
 const SAFE_CELLS = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+const GAME_RESET_DELAY_MS = 15000;
+const ROOM_PASSWORD = 'sabkhelo';
+const MAX_ACTIVE_ROOMS = 5;
+const MAX_PLAYERS_PER_ROOM = 4;
 
 const rooms = new Map();
 const sseClients = new Map();
@@ -75,6 +79,60 @@ function getPlayer(room, playerId) {
   return room.players.find((p) => p.id === playerId) || null;
 }
 
+function getPlayerName(room, playerId) {
+  const player = getPlayer(room, playerId);
+  return player ? player.name : 'Unknown';
+}
+
+function resetPieces(room) {
+  for (const color of COLORS) {
+    room.pieces[color] = [-1, -1, -1, -1];
+  }
+}
+
+function clearResetTimer(room) {
+  if (room.resetTimer) {
+    clearTimeout(room.resetTimer);
+    room.resetTimer = null;
+  }
+  room.resetAt = null;
+}
+
+function resetRoomForLobby(room, options = {}) {
+  const clearLog = Boolean(options.clearLog);
+
+  room.started = false;
+  room.gameOver = false;
+  room.turnIndex = 0;
+  room.pendingRoll = null;
+  room.validMoves = [];
+  room.consecutiveSixes = 0;
+  room.consecutiveOnes = 0;
+  room.winners = [];
+  resetPieces(room);
+  clearResetTimer(room);
+
+  if (clearLog) {
+    room.log = [];
+  }
+}
+
+function scheduleAutoReset(room) {
+  clearResetTimer(room);
+  room.resetAt = Date.now() + GAME_RESET_DELAY_MS;
+
+  room.resetTimer = setTimeout(() => {
+    room.resetTimer = null;
+    resetRoomForLobby(room, { clearLog: true });
+    addLog(room, 'Previous game data was auto-cleared. Host can start a new game.');
+    broadcast(room, 'auto-reset');
+  }, GAME_RESET_DELAY_MS);
+
+  if (typeof room.resetTimer.unref === 'function') {
+    room.resetTimer.unref();
+  }
+}
+
 function isFinished(room, color) {
   const pieces = room.pieces[color] || [];
   return pieces.length === 4 && pieces.every((value) => value === 57);
@@ -115,11 +173,65 @@ function calculateNextProgress(current, dice) {
   return next;
 }
 
+function countPiecesAtTrackIndex(room, color, trackIndex) {
+  const pieces = room.pieces[color] || [];
+  let count = 0;
+  for (const progress of pieces) {
+    if (progress < 0 || progress > 51) continue;
+    if (progressToTrack(color, progress) === trackIndex) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function isOpponentBlockAt(room, moverColor, trackIndex) {
+  for (const player of room.players) {
+    if (player.color === moverColor) continue;
+    if (countPiecesAtTrackIndex(room, player.color, trackIndex) >= 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isMoveBlockedByOpponent(room, moverColor, currentProgress, nextProgress, dice) {
+  if (nextProgress === null) return true;
+
+  if (currentProgress === -1) {
+    const startTrack = progressToTrack(moverColor, 0);
+    return isOpponentBlockAt(room, moverColor, startTrack);
+  }
+
+  for (let step = 1; step <= dice; step += 1) {
+    const stepProgress = currentProgress + step;
+    if (stepProgress > 51) break;
+
+    const stepTrack = progressToTrack(moverColor, stepProgress);
+    if (isOpponentBlockAt(room, moverColor, stepTrack)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isLegalMove(room, color, currentProgress, dice) {
+  const nextProgress = calculateNextProgress(currentProgress, dice);
+  if (nextProgress === null) return false;
+
+  if (currentProgress >= 52) {
+    return true;
+  }
+
+  return !isMoveBlockedByOpponent(room, color, currentProgress, nextProgress, dice);
+}
+
 function validMovesFor(room, color, dice) {
   const pieces = room.pieces[color] || [];
   const moves = [];
   for (let i = 0; i < pieces.length; i += 1) {
-    if (calculateNextProgress(pieces[i], dice) !== null) {
+    if (isLegalMove(room, color, pieces[i], dice)) {
       moves.push(i);
     }
   }
@@ -134,6 +246,7 @@ function maybeCapture(room, moverColor, landingProgress) {
   let captured = 0;
   for (const player of room.players) {
     if (player.color === moverColor) continue;
+    if (countPiecesAtTrackIndex(room, player.color, landingTrack) >= 2) continue;
     const enemyPieces = room.pieces[player.color];
     for (let i = 0; i < enemyPieces.length; i += 1) {
       if (enemyPieces[i] < 0 || enemyPieces[i] > 51) continue;
@@ -163,12 +276,17 @@ function maybeEndGame(room) {
         room.winners.push(player.id);
       }
     }
+
     room.gameOver = true;
     room.started = false;
     room.pendingRoll = null;
     room.validMoves = [];
     room.consecutiveSixes = 0;
+  room.consecutiveOnes = 0;
+
     room.log.push('Game over. Final ranking is available in the winners list.');
+    room.log.push(`Game data and logs will auto-reset in ${Math.floor(GAME_RESET_DELAY_MS / 1000)} seconds.`);
+    scheduleAutoReset(room);
   }
 }
 
@@ -200,6 +318,7 @@ function createRoom(hostName) {
     pendingRoll: null,
     validMoves: [],
     consecutiveSixes: 0,
+    consecutiveOnes: 0,
     pieces: {
       red: [-1, -1, -1, -1],
       green: [-1, -1, -1, -1],
@@ -208,6 +327,8 @@ function createRoom(hostName) {
     },
     winners: [],
     log: [`${host.name} created room ${code}.`],
+    resetTimer: null,
+    resetAt: null,
   };
 
   rooms.set(code, room);
@@ -222,6 +343,7 @@ function buildState(room, viewerId, reason) {
     hostId: room.hostId,
     started: room.started,
     gameOver: room.gameOver,
+    resetAt: room.resetAt,
     turnPlayerId: current ? current.id : null,
     pendingRoll: room.pendingRoll,
     validMoves: room.validMoves,
@@ -300,6 +422,12 @@ function handleRoll(room, player) {
     room.consecutiveSixes = 0;
   }
 
+  if (dice === 1) {
+    room.consecutiveOnes += 1;
+  } else {
+    room.consecutiveOnes = 0;
+  }
+
   addLog(room, `${player.name} rolled a ${dice}.`);
 
   if (room.consecutiveSixes >= 3) {
@@ -307,6 +435,7 @@ function handleRoll(room, player) {
     room.pendingRoll = null;
     room.validMoves = [];
     room.consecutiveSixes = 0;
+    room.consecutiveOnes = 0;
     nextTurn(room);
     const next = activePlayer(room);
     if (next) {
@@ -320,6 +449,7 @@ function handleRoll(room, player) {
     room.pendingRoll = null;
     room.validMoves = [];
     room.consecutiveSixes = 0;
+    room.consecutiveOnes = 0;
     nextTurn(room);
     const next = activePlayer(room);
     if (next) {
@@ -353,13 +483,36 @@ function handleMove(room, player, tokenIndex) {
   const dice = room.pendingRoll;
   const color = player.color;
   const currentProgress = room.pieces[color][tokenIndex];
-  const nextProgress = calculateNextProgress(currentProgress, dice);
 
-  if (nextProgress === null) {
+  if (!isLegalMove(room, color, currentProgress, dice)) {
     throw new Error('Illegal move.');
   }
 
+  const nextProgress = calculateNextProgress(currentProgress, dice);
   room.pieces[color][tokenIndex] = nextProgress;
+
+  const onePenaltyApplies = dice === 1 && room.consecutiveOnes >= 3;
+
+  if (onePenaltyApplies) {
+    room.pieces[color][tokenIndex] = -1;
+    addLog(
+      room,
+      `${player.name} rolled 1 for the third consecutive turn. Token ${tokenIndex + 1} returned home and turn ended.`
+    );
+
+    room.pendingRoll = null;
+    room.validMoves = [];
+    room.consecutiveSixes = 0;
+    room.consecutiveOnes = 0;
+
+    nextTurn(room);
+    const next = activePlayer(room);
+    if (next) {
+      addLog(room, `Turn: ${next.name}`);
+    }
+    return;
+  }
+
   const captured = maybeCapture(room, color, nextProgress);
 
   if (captured > 0) {
@@ -380,12 +533,13 @@ function handleMove(room, player, tokenIndex) {
     return;
   }
 
-  const getsExtraTurn = dice === 6 && !isFinished(room, player.color);
+  const getsExtraTurn = (dice === 6 || dice === 1) && !isFinished(room, player.color);
 
   if (getsExtraTurn) {
-    addLog(room, `${player.name} gets another turn.`);
+    addLog(room, `${player.name} gets another turn for rolling ${dice}.`);
   } else {
     room.consecutiveSixes = 0;
+    room.consecutiveOnes = 0;
     nextTurn(room);
     const next = activePlayer(room);
     if (next) {
@@ -404,6 +558,36 @@ function ensureRoomForAction(roomCode, playerId) {
     throw new Error('Player not found in this room.');
   }
   return { room, player };
+}
+
+function handleLeaveRoom(room, playerId) {
+  const leavingIndex = room.players.findIndex((player) => player.id === playerId);
+  if (leavingIndex === -1) {
+    return { roomDeleted: false, playerFound: false };
+  }
+
+  const [leavingPlayer] = room.players.splice(leavingIndex, 1);
+
+  if (room.players.length === 0) {
+    clearResetTimer(room);
+    rooms.delete(room.code);
+    sseClients.delete(room.code);
+    return { roomDeleted: true, playerFound: true, leavingPlayer };
+  }
+
+  if (room.hostId === leavingPlayer.id) {
+    room.hostId = room.players[0].id;
+  }
+
+  if (room.started || room.gameOver) {
+    resetRoomForLobby(room, { clearLog: true });
+    addLog(room, leavingPlayer.name + ' left. Match reset for remaining players.');
+  } else {
+    addLog(room, leavingPlayer.name + ' left the room.');
+  }
+
+  addLog(room, 'Host: ' + getPlayerName(room, room.hostId) + '.');
+  return { roomDeleted: false, playerFound: true, leavingPlayer };
 }
 
 function serveStatic(reqPath, res) {
@@ -499,6 +683,13 @@ async function handleApi(req, res, urlObj) {
   const body = await readJsonBody(req);
 
   if (pathname === '/api/create-room') {
+    if (String(body.password || '') !== ROOM_PASSWORD) {
+      throw new Error('Invalid room password.');
+    }
+    if (rooms.size >= MAX_ACTIVE_ROOMS) {
+      throw new Error('Room limit reached (max 5 active rooms).');
+    }
+
     const { room, host } = createRoom(body.name);
     safeJson(res, 201, {
       roomCode: room.code,
@@ -513,6 +704,9 @@ async function handleApi(req, res, urlObj) {
     const roomCode = String(body.roomCode || '').toUpperCase().trim();
     const name = sanitizeName(body.name);
 
+    if (String(body.password || '') !== ROOM_PASSWORD) {
+      throw new Error('Invalid room password.');
+    }
     if (!roomCode) {
       throw new Error('Room code is required.');
     }
@@ -527,8 +721,8 @@ async function handleApi(req, res, urlObj) {
     if (room.started) {
       throw new Error('Game already started in this room.');
     }
-    if (room.players.length >= 4) {
-      throw new Error('Room is full.');
+    if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
+      throw new Error('Room is full (max 4 players).');
     }
 
     const usedColors = new Set(room.players.map((p) => p.color));
@@ -551,6 +745,29 @@ async function handleApi(req, res, urlObj) {
     return;
   }
 
+  if (pathname === '/api/leave-room') {
+    const roomCode = String(body.roomCode || '').toUpperCase().trim();
+    const leavingPlayerId = String(body.playerId || '').trim();
+
+    if (!roomCode || !leavingPlayerId) {
+      throw new Error('Room code and player id are required.');
+    }
+
+    const room = getRoom(roomCode);
+    if (!room) {
+      safeJson(res, 200, { ok: true, roomDeleted: true });
+      return;
+    }
+
+    const leaveResult = handleLeaveRoom(room, leavingPlayerId);
+    safeJson(res, 200, { ok: true, roomDeleted: leaveResult.roomDeleted });
+
+    if (!leaveResult.roomDeleted) {
+      broadcast(room, 'player-left');
+    }
+    return;
+  }
+
   if (pathname === '/api/start-game') {
     const { room, player } = ensureRoomForAction(body.roomCode, body.playerId);
     if (room.started) {
@@ -563,17 +780,16 @@ async function handleApi(req, res, urlObj) {
       throw new Error('At least 2 players are required.');
     }
 
+    resetRoomForLobby(room, { clearLog: true });
+
     room.started = true;
     room.gameOver = false;
     room.turnIndex = 0;
     room.pendingRoll = null;
     room.validMoves = [];
     room.consecutiveSixes = 0;
+  room.consecutiveOnes = 0;
     room.winners = [];
-
-    for (const color of COLORS) {
-      room.pieces[color] = [-1, -1, -1, -1];
-    }
 
     const starter = activePlayer(room);
     addLog(room, 'Game started.');
@@ -605,7 +821,6 @@ async function handleApi(req, res, urlObj) {
 
   safeJson(res, 404, { error: 'Unknown API endpoint.' });
 }
-
 
 function getLanIpv4Addresses() {
   const output = [];
@@ -679,3 +894,15 @@ server.listen(PORT, HOST, () => {
 
   console.log(`Host: http://${HOST}:${PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
