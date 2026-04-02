@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Ludo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="layout">
+    <section class="panel" id="setup-panel">
+      <h1>Online Ludo</h1>
+      <p class="muted">Create a room and share the code with friends.</p>
+
+      <label for="player-name">Your Name</label>
+      <input id="player-name" type="text" maxlength="20" placeholder="Player name" />
+
+      <div class="setup-actions">
+        <button id="create-room-btn">Create Room</button>
+      </div>
+
+      <div class="join-row">
+        <input id="join-room-code" type="text" maxlength="8" placeholder="Room code" />
+        <button id="join-room-btn">Join Room</button>
+      </div>
+
+      <p id="setup-status" class="status"></p>
+    </section>
+
+    <section class="panel hidden" id="game-panel">
+      <div class="game-top">
+        <h2>Room <span id="room-code">-</span></h2>
+        <div class="top-actions">
+          <button id="start-btn" class="hidden">Start Game</button>
+          <button id="roll-btn">Roll Dice</button>
+        </div>
+      </div>
+
+      <p id="turn-status" class="status"></p>
+      <div id="move-actions" class="move-actions"></div>
+
+      <div class="game-grid">
+        <canvas id="board" width="720" height="720"></canvas>
+
+        <aside>
+          <h3>Players</h3>
+          <ul id="players-list" class="players"></ul>
+
+          <h3>Winners</h3>
+          <ol id="winners-list" class="winners"></ol>
+
+          <h3>Activity</h3>
+          <ul id="log-list" class="log"></ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="/client.js" defer></script>
+</body>
+</html>
