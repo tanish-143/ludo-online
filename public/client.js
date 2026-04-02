@@ -1227,6 +1227,19 @@ function drawClassicBoard(geometry) {
     drawCell(geometry, x, y, '#f2e6cc');
   }
 
+  // Colored exit strips on track (the 5 cells leading out of each quadrant)
+  const EXIT_STRIPS = {
+    red:    [[6,1],[6,2],[6,3],[6,4],[6,5]],
+    yellow: [[1,8],[2,8],[3,8],[4,8],[5,8]],
+    green:  [[9,6],[10,6],[11,6],[12,6],[13,6]],
+    blue:   [[8,9],[8,10],[8,11],[8,12],[8,13]],
+  };
+  for (const [color, cells] of Object.entries(EXIT_STRIPS)) {
+    for (const [x, y] of cells) {
+      drawCell(geometry, x, y, BOARD_COLORS[color].bg);
+    }
+  }
+
   // Home lane cells (colored strips leading to center)
   for (const [color, cells] of Object.entries(HOME_LANE_CELLS)) {
     for (let i = 0; i < cells.length - 1; i++) {
