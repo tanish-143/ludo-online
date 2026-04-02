@@ -11,9 +11,9 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const COLORS = ['red', 'green', 'yellow', 'blue'];
 const START_INDEX = {
   red: 0,
-  green: 13,
-  yellow: 26,
-  blue: 39,
+  green: 39,
+  yellow: 13,
+  blue: 26,
 };
 const SAFE_CELLS = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
 const GAME_RESET_DELAY_MS = 15000;
@@ -163,10 +163,14 @@ function progressToTrack(color, progress) {
   return (START_INDEX[color] + progress) % 52;
 }
 
-function calculateNextProgress(current, dice) {
+function calculateNextProgress(current, dice, rules) {
   if (current === 57) return null;
   if (current === -1) {
-    return dice === 6 ? 0 : null;
+    // Default: rolling 1 brings piece out
+    if (dice === 1) return 0;
+    // Rule: rolling 6 also brings piece out
+    if (dice === 6 && rules && rules.sixTakeOut) return 0;
+    return null;
   }
   const next = current + dice;
   if (next > 57) return null;
@@ -217,7 +221,7 @@ function isMoveBlockedByOpponent(room, moverColor, currentProgress, nextProgress
 }
 
 function isLegalMove(room, color, currentProgress, dice) {
-  const nextProgress = calculateNextProgress(currentProgress, dice);
+  const nextProgress = calculateNextProgress(currentProgress, dice, room.rules);
   if (nextProgress === null) return false;
 
   if (currentProgress >= 52) {
@@ -270,7 +274,9 @@ function maybeFinishPlayer(room, player) {
 
 function maybeEndGame(room) {
   if (room.gameOver) return;
-  if (room.winners.length >= room.players.length - 1) {
+  const rules = room.rules || {};
+  const endThreshold = rules.continueAfterWin ? room.players.length : room.players.length - 1;
+  if (room.winners.length >= endThreshold) {
     for (const player of room.players) {
       if (!room.winners.includes(player.id)) {
         room.winners.push(player.id);
@@ -329,6 +335,13 @@ function createRoom(hostName) {
     log: [`${host.name} created room ${code}.`],
     resetTimer: null,
     resetAt: null,
+    rules: {
+      sixTakeOut: false,
+      killExtraTurn: false,
+      homeExtraTurn: false,
+      tripleOnesPenalty: false,
+      continueAfterWin: false,
+    },
   };
 
   rooms.set(code, room);
@@ -358,6 +371,7 @@ function buildState(room, viewerId, reason) {
     log: room.log.slice(-30),
     yourPlayerId: viewerId || null,
     youAreHost: viewerId === room.hostId,
+    rules: room.rules,
   };
 }
 
@@ -367,6 +381,42 @@ function sendSse(client, payload) {
     client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
   } catch {
     client.closed = true;
+  }
+}
+
+function sendSseEvent(client, eventName, payload) {
+  try {
+    client.res.write(`event: ${eventName}\n`);
+    client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch {
+    client.closed = true;
+  }
+}
+
+function broadcastEmoji(room, senderPlayerId, emoji) {
+  const clients = sseClients.get(room.code);
+  if (!clients || clients.size === 0) return;
+
+  const sender = getPlayer(room, senderPlayerId);
+  const payload = {
+    playerName: sender ? sender.name : 'Unknown',
+    playerColor: sender ? sender.color : 'red',
+    emoji,
+  };
+
+  for (const client of clients) {
+    if (client.closed) continue;
+    sendSseEvent(client, 'emoji', payload);
+  }
+
+  for (const client of Array.from(clients)) {
+    if (client.closed) {
+      clients.delete(client);
+    }
+  }
+
+  if (clients.size === 0) {
+    sseClients.delete(room.code);
   }
 }
 
@@ -488,7 +538,7 @@ function handleMove(room, player, tokenIndex) {
     throw new Error('Illegal move.');
   }
 
-  const nextProgress = calculateNextProgress(currentProgress, dice);
+  const nextProgress = calculateNextProgress(currentProgress, dice, room.rules);
   room.pieces[color][tokenIndex] = nextProgress;
 
   const onePenaltyApplies = dice === 1 && room.consecutiveOnes >= 3;
@@ -519,7 +569,8 @@ function handleMove(room, player, tokenIndex) {
     addLog(room, `${player.name} captured ${captured} token${captured > 1 ? 's' : ''}.`);
   }
 
-  if (nextProgress === 57) {
+  const reachedHome = nextProgress === 57;
+  if (reachedHome) {
     addLog(room, `${player.name} moved token ${tokenIndex + 1} into home.`);
   }
 
@@ -533,7 +584,11 @@ function handleMove(room, player, tokenIndex) {
     return;
   }
 
-  const getsExtraTurn = (dice === 6 || dice === 1) && !isFinished(room, player.color);
+  const rules = room.rules || {};
+  const getsExtraTurn =
+    ((dice === 6 || dice === 1) && !isFinished(room, player.color)) ||
+    (captured > 0 && rules.killExtraTurn) ||
+    (reachedHome && rules.homeExtraTurn);
 
   if (getsExtraTurn) {
     addLog(room, `${player.name} gets another turn for rolling ${dice}.`);
@@ -816,6 +871,41 @@ async function handleApi(req, res, urlObj) {
     handleMove(room, player, tokenIndex);
     safeJson(res, 200, { ok: true });
     broadcast(room, 'moved');
+    return;
+  }
+
+  if (pathname === '/api/update-rules') {
+    const { room, player } = ensureRoomForAction(body.roomCode, body.playerId);
+    if (player.id !== room.hostId) {
+      throw new Error('Only the host can change rules.');
+    }
+    if (room.started) {
+      throw new Error('Cannot change rules while game is active.');
+    }
+    const VALID_RULES = ['sixTakeOut', 'killExtraTurn', 'homeExtraTurn', 'tripleOnesPenalty', 'continueAfterWin'];
+    const rules = body.rules;
+    if (!rules || typeof rules !== 'object') {
+      throw new Error('Rules object is required.');
+    }
+    for (const key of VALID_RULES) {
+      if (key in rules) {
+        room.rules[key] = Boolean(rules[key]);
+      }
+    }
+    safeJson(res, 200, { ok: true, rules: room.rules });
+    broadcast(room, 'rules-updated');
+    return;
+  }
+
+  if (pathname === '/api/send-emoji') {
+    const ALLOWED_EMOJIS = ['👍','😄','😭','😡','🎉','🔥','🎯','👋'];
+    const { room, player } = ensureRoomForAction(body.roomCode, body.playerId);
+    const emoji = String(body.emoji || '');
+    if (!ALLOWED_EMOJIS.includes(emoji)) {
+      throw new Error('Invalid emoji.');
+    }
+    broadcastEmoji(room, player.id, emoji);
+    safeJson(res, 200, { ok: true });
     return;
   }
 
