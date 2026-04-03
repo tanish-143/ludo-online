@@ -1,364 +1,88 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ludo Online - Free Multiplayer Board Game</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ludo Online</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <div id="app">
+    <header>
+      <h1>🎲 Ludo</h1>
+      <div id="turn-indicator">Red's Turn</div>
+    </header>
 
-  <!-- Parchment texture overlays -->
-  <div class="noise"></div>
-  <div class="stains"></div>
-  <div class="vignette"></div>
-
-  <!-- ========== SETUP / LOGIN ========== -->
-  <main class="scene" id="setup-panel">
-    <div class="lobby-card">
-      <h1 class="lobby-title">Game Lobby</h1>
-
-      <!-- Name + password form (shown before creating/joining) -->
-      <div id="lobby-form">
-        <div class="form-group">
-          <label for="player-name">Your Name</label>
-          <input id="player-name" type="text" maxlength="20" placeholder="Enter your name" autocomplete="off" />
-        </div>
-
-        <div class="form-group">
-          <label for="room-password">Room Password</label>
-          <input id="room-password" type="password" maxlength="32" placeholder="Enter password" />
-        </div>
-
-        <button id="create-room-btn" class="btn btn-primary btn-block">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Create Room
-        </button>
-
-        <div class="divider"><span>or join existing</span></div>
-
-        <div class="join-row">
-          <input id="join-room-code" type="text" maxlength="8" placeholder="Room code" autocomplete="off" />
-          <button id="join-room-btn" class="btn btn-secondary">Join</button>
-        </div>
-
-        <p id="setup-status" class="status-msg"></p>
-      </div>
-
-      <div class="divider"><span>or</span></div>
-
-      <a href="/offline.html" class="btn btn-secondary btn-block" style="text-decoration:none;text-align:center;">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Play Offline (Local)
-      </a>
-    </div>
-  </main>
-
-  <!-- ========== ROOM LOBBY (after joining, before game starts) ========== -->
-  <main class="scene hidden" id="room-lobby">
-    <!-- Connecting/loading state -->
-    <div id="lobby-connecting" class="lobby-card lobby-connecting-card">
-      <div class="connecting-spinner">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin-icon"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
-        <span>Connecting to game...</span>
-      </div>
-      <p class="connecting-room-id">Room ID: <span id="connecting-room-code" class="connecting-code">-</span></p>
-    </div>
-
-    <!-- Full lobby (shown after connected) -->
-    <div id="lobby-content" class="lobby-card lobby-card-wide hidden">
-      <h1 class="lobby-title lobby-title-left">Game Lobby</h1>
-
-      <!-- Room Code + Copy -->
-      <div class="room-badge room-badge-lobby">
-        <div class="room-badge-left">
-          <span class="room-label">Room Code</span>
-          <span id="lobby-room-code" class="room-code-value">-</span>
-        </div>
-        <button id="lobby-copy-btn" class="btn-copy" type="button" title="Copy room link">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copy Link
-        </button>
-      </div>
-
-      <!-- Share buttons -->
-      <div class="share-row">
-        <button id="share-whatsapp" class="btn btn-share btn-whatsapp" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          WhatsApp
-        </button>
-        <button id="share-twitter" class="btn btn-share btn-twitter" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-          Twitter
-        </button>
-      </div>
-
-      <!-- Players list with live count -->
-      <div class="lobby-section">
-        <div class="lobby-section-header">
-          <h3 class="lobby-section-title">Players (<span id="lobby-player-count">0</span>/4)</h3>
-          <div class="lobby-player-stats">
-            <span class="stat-item" title="Humans">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <span id="lobby-human-count">0</span>
-            </span>
+    <div id="main-layout">
+      <!-- Left panels: Red & Blue -->
+      <div id="left-panels">
+        <div class="player-panel" id="panel-red">
+          <div class="panel-color-bar bar-red"></div>
+          <div class="panel-body">
+            <div class="panel-name">Red</div>
+            <div class="panel-tokens"></div>
+            <div class="player-score">0/4 home</div>
+            <div class="progress-bar"><div class="progress-bar-fill fill-red"></div></div>
           </div>
         </div>
-        <ul id="lobby-players-list" class="players-list"></ul>
-      </div>
-
-      <!-- Game Rules toggle -->
-      <button id="game-rules-toggle" class="lobby-rules-btn" type="button">
-        <span class="rules-btn-left">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Game Rules
-        </span>
-        <svg class="rules-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-
-      <!-- Game Rules Panel (hidden by default) -->
-      <div id="game-rules-panel" class="rules-panel hidden">
-        <div class="rules-panel-header">
-          <button id="rules-back-btn" class="rules-back-btn" type="button">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <h2 class="rules-panel-title">Game Rules</h2>
-        </div>
-
-        <div class="rules-list">
-          <label class="rule-item">
-            <div class="rule-icon rule-icon-green">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-            </div>
-            <div class="rule-info">
-              <span class="rule-name">Allow 6 to take piece out</span>
-              <span class="rule-desc">Rolling 6 can also bring a piece out (in addition to 1)</span>
-            </div>
-            <input type="checkbox" class="rule-toggle" id="rule-six-out" data-rule="sixTakeOut" />
-            <span class="toggle-slider"></span>
-          </label>
-
-          <label class="rule-item">
-            <div class="rule-icon rule-icon-red">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
-            </div>
-            <div class="rule-info">
-              <span class="rule-name">Kill grants extra turn</span>
-              <span class="rule-desc">Get another turn when you capture an opponent's piece</span>
-            </div>
-            <input type="checkbox" class="rule-toggle" id="rule-kill-extra" data-rule="killExtraTurn" />
-            <span class="toggle-slider"></span>
-          </label>
-
-          <label class="rule-item">
-            <div class="rule-icon rule-icon-green">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            </div>
-            <div class="rule-info">
-              <span class="rule-name">Reaching home grants extra turn</span>
-              <span class="rule-desc">Get another turn when a piece reaches home</span>
-            </div>
-            <input type="checkbox" class="rule-toggle" id="rule-home-extra" data-rule="homeExtraTurn" />
-            <span class="toggle-slider"></span>
-          </label>
-
-          <label class="rule-item">
-            <div class="rule-icon rule-icon-yellow">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div class="rule-info">
-              <span class="rule-name">Triple 1's penalty</span>
-              <span class="rule-desc">Rolling three 1's in a row sends your most advanced piece back</span>
-            </div>
-            <input type="checkbox" class="rule-toggle" id="rule-triple-ones" data-rule="tripleOnesPenalty" />
-            <span class="toggle-slider"></span>
-          </label>
-
-          <label class="rule-item">
-            <div class="rule-icon rule-icon-purple">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
-            </div>
-            <div class="rule-info">
-              <span class="rule-name">Continue after winner</span>
-              <span class="rule-desc">Game continues for remaining players after someone wins</span>
-            </div>
-            <input type="checkbox" class="rule-toggle" id="rule-continue" data-rule="continueAfterWin" />
-            <span class="toggle-slider"></span>
-          </label>
-
-
-        </div>
-
-        <button id="rules-done-btn" class="btn btn-rules-done btn-block" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Done
-        </button>
-      </div>
-
-      <!-- Start Game (shown for host) -->
-      <button id="lobby-start-btn" class="btn btn-lobby-start btn-block hidden" type="button">
-        Start Game
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-      </button>
-
-      <!-- Leave room -->
-      <button id="lobby-leave-btn" class="btn btn-lobby-leave" type="button">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Leave Room
-      </button>
-
-      <p id="lobby-status" class="status-msg"></p>
-    </div>
-  </main>
-
-  <!-- ========== GAME VIEW ========== -->
-  <main class="scene hidden" id="game-panel">
-    <div class="game-body">
-      <!-- Board area -->
-      <div class="board-area">
-        <canvas id="board" width="720" height="720"></canvas>
-
-        <!-- Player cards overlay on board corners -->
-        <div id="board-player-cards" class="board-player-cards"></div>
-
-        <!-- Dice overlay on board -->
-        <div class="dice-overlay">
-          <button id="dice-widget" class="dice-widget" type="button" aria-label="Roll dice">
-            <div id="dice-face" class="dice-face">
-              <span class="dice-val">1</span>
-            </div>
-          </button>
-          <span id="dice-help" class="dice-help">Tap to roll</span>
-        </div>
-
-        <!-- Current turn player indicator -->
-        <div id="current-turn-bar" class="turn-bar">
-          <span id="turn-status" class="turn-text">Waiting...</span>
-        </div>
-
-        <!-- Floating emoji container -->
-        <div id="emoji-float-container" class="emoji-float-container"></div>
-      </div>
-
-      <!-- Side panel -->
-      <aside class="side-panel">
-        <!-- Room code badge -->
-        <div class="room-badge" id="room-badge-section">
-          <span class="room-label">Room Code</span>
-          <span id="room-code" class="room-code-value">-</span>
-          <button id="copy-code-btn" class="btn-copy" type="button" title="Copy room code">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Copy Link
-          </button>
-        </div>
-
-        <!-- Players section -->
-        <div class="sp-section">
-          <h3 class="sp-title">Players</h3>
-          <ul id="players-list" class="players-list"></ul>
-          <!-- Start game button inside players section -->
-          <button id="start-btn" class="btn btn-start hidden">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-            Start Game
-          </button>
-          <p id="start-hint" class="start-hint hidden">Need at least 2 players to start</p>
-        </div>
-
-        <!-- Game Controls section -->
-        <div class="sp-section">
-          <h3 class="sp-title">Game Controls</h3>
-          <div class="controls-stack">
-            <button id="game-settings-btn" class="btn btn-control btn-settings" type="button">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Game Settings
-            </button>
-
-            <button id="sound-btn" class="btn btn-control btn-mute" type="button">
-              <svg id="sound-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-              Mute Sound
-            </button>
-
-            <div class="emoji-wrapper">
-              <button id="emoji-btn" class="btn btn-control btn-emoji-ctrl" type="button">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                Send Emoji
-              </button>
-              <div id="emoji-picker" class="emoji-picker hidden">
-                <button class="emoji-opt" data-emoji="👍" type="button">👍</button>
-                <button class="emoji-opt" data-emoji="😄" type="button">😄</button>
-                <button class="emoji-opt" data-emoji="😭" type="button">😭</button>
-                <button class="emoji-opt" data-emoji="😡" type="button">😡</button>
-                <button class="emoji-opt" data-emoji="🎉" type="button">🎉</button>
-                <button class="emoji-opt" data-emoji="🔥" type="button">🔥</button>
-                <button class="emoji-opt" data-emoji="🎯" type="button">🎯</button>
-                <button class="emoji-opt" data-emoji="👋" type="button">👋</button>
-              </div>
-            </div>
-
-            <button id="exit-btn" class="btn btn-control btn-leave" type="button">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Leave Game
-            </button>
+        <div class="player-panel" id="panel-blue">
+          <div class="panel-color-bar bar-blue"></div>
+          <div class="panel-body">
+            <div class="panel-name">Blue</div>
+            <div class="panel-tokens"></div>
+            <div class="player-score">0/4 home</div>
+            <div class="progress-bar"><div class="progress-bar-fill fill-blue"></div></div>
           </div>
         </div>
+      </div>
 
-        <!-- Winners (shown during/after game) -->
-        <div class="sp-section" id="winners-section">
-          <h3 class="sp-title">Winners</h3>
-          <ol id="winners-list" class="winners-list"></ol>
+      <!-- Board -->
+      <div id="board-wrap">
+        <div id="board"></div>
+        <div id="game-message"></div>
+      </div>
+
+      <!-- Right panels: Green & Yellow -->
+      <div id="right-panels">
+        <div class="player-panel" id="panel-green">
+          <div class="panel-color-bar bar-green"></div>
+          <div class="panel-body">
+            <div class="panel-name">Green</div>
+            <div class="panel-tokens"></div>
+            <div class="player-score">0/4 home</div>
+            <div class="progress-bar"><div class="progress-bar-fill fill-green"></div></div>
+          </div>
         </div>
-
-        <!-- Activity log -->
-        <div class="sp-section sp-section-log" id="log-section">
-          <h3 class="sp-title">Activity</h3>
-          <ul id="log-list" class="log-list"></ul>
+        <div class="player-panel" id="panel-yellow">
+          <div class="panel-color-bar bar-yellow"></div>
+          <div class="panel-body">
+            <div class="panel-name">Yellow</div>
+            <div class="panel-tokens"></div>
+            <div class="player-score">0/4 home</div>
+            <div class="progress-bar"><div class="progress-bar-fill fill-yellow"></div></div>
+          </div>
         </div>
-
-        <!-- Fallback move buttons -->
-        <div id="move-actions" class="move-actions"></div>
-
-        <p id="board-tip" class="board-tip"></p>
-      </aside>
-    </div>
-
-    <!-- In-game rules overlay -->
-    <div id="ingame-rules-overlay" class="ingame-rules-overlay hidden">
-      <div class="ingame-rules-card">
-        <div class="ingame-rules-header">
-          <h2 class="ingame-rules-title">Game Settings</h2>
-          <button id="ingame-rules-close" class="ingame-rules-close" type="button">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div id="ingame-rules-list" class="rules-list">
-          <!-- Populated by JS -->
-        </div>
-
-        <button id="ingame-rules-done" class="btn btn-rules-done btn-block" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Done
-        </button>
       </div>
     </div>
 
-    <!-- Bottom player bar -->
-    <div id="player-bar" class="player-bar">
-      <div id="player-bar-info" class="player-bar-info"></div>
-      <div class="player-bar-dice">
-        <div id="bar-dice-face" class="bar-dice-face">
-          <span class="bar-dice-dot">&#9679;</span>
-        </div>
+    <!-- Dice area -->
+    <div id="dice-area">
+      <div id="dice" data-value="1"></div>
+      <button id="roll-btn">Roll Dice</button>
+    </div>
+
+    <!-- Winner overlay -->
+    <div id="winner-overlay" style="display:none">
+      <div id="winner-box">
+        <div id="winner-message">Winner!</div>
+        <button id="new-game-btn">Play Again</button>
       </div>
     </div>
-  </main>
+  </div>
 
-  <!-- Hidden roll button (used by JS) -->
-  <button id="roll-btn" class="hidden" style="display:none">Roll Dice</button>
-
-  <script src="/client.js" defer></script>
+  <script src="js/game.js"></script>
+  <script src="js/dice.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
