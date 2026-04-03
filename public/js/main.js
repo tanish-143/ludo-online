@@ -123,21 +123,22 @@
     animating = true;
 
     const state = G.getState();
-    const G2 = window.LudoGame;
 
-    // Get from coord before move
+    // Get from coord BEFORE move and capture its bounding rect immediately
     const player = state.players.find(p => p.color === color);
     const token = player.tokens.find(t => t.id === tokenId);
-    const fromCoord = G2.getTokenCoord(token);
+    const fromCoord = G.getTokenCoord(token);
+    const fromCell = fromCoord ? UI.getCell(fromCoord[0], fromCoord[1]) : null;
+    const fromRect = fromCell ? fromCell.getBoundingClientRect() : null;
 
     const result = G.moveToken(color, tokenId, diceValue);
 
-    // Get to coord after move
-    const toCoord = G2.getTokenCoord(token);
+    // Get to coord AFTER move
+    const toCoord = G.getTokenCoord(token);
 
     UI.renderBoard();
 
-    // Animate
+    // Animate: token element is now at its new cell; ghost flies from fromRect to toCell
     const tokenEl = document.getElementById('token-' + color + '-' + tokenId);
     const toCell = toCoord ? UI.getCell(toCoord[0], toCoord[1]) : null;
 
@@ -170,8 +171,8 @@
       startNextTurn();
     }
 
-    if (tokenEl && toCell) {
-      UI.animateTokenMove(tokenEl, toCell, afterAnimation);
+    if (tokenEl && toCell && fromRect) {
+      UI.animateTokenMove(tokenEl, fromRect, toCell, afterAnimation);
     } else {
       afterAnimation();
     }

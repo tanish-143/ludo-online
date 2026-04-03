@@ -19,7 +19,17 @@
     // Center
     if (row === 7 && col === 7) return { type: 'center' };
 
-    // Home yards (colored 6x6 quadrants, inner 4x4 is the yard)
+    // Check home yard token spots BEFORE generic yard check
+    for (const color of G.COLORS) {
+      const hy = G.HOME_YARD[color];
+      for (let i = 0; i < 4; i++) {
+        if (hy[i][0] === row && hy[i][1] === col) {
+          return { type: 'yardspot', color };
+        }
+      }
+    }
+
+    // Home yards (colored 6x6 quadrants)
     if (row >= 0 && row <= 5 && col >= 0 && col <= 5) return { type: 'yard', color: 'red' };
     if (row >= 0 && row <= 5 && col >= 9 && col <= 14) return { type: 'yard', color: 'green' };
     if (row >= 9 && row <= 14 && col >= 9 && col <= 14) return { type: 'yard', color: 'yellow' };
@@ -73,7 +83,7 @@
 
         if (info.type === 'center') {
           cell.classList.add('cell-center');
-          // Center triangles built with inner divs
+          // Center triangles built with inner divs (absolute-positioned, each covers full cell)
           const tri = document.createElement('div');
           tri.className = 'center-triangles';
           ['red','green','yellow','blue'].forEach(function(clr) {
@@ -82,10 +92,11 @@
             tri.appendChild(t);
           });
           cell.appendChild(tri);
+        } else if (info.type === 'yardspot') {
+          // Token starting positions inside the yard — inherit yard color, show as a spot
+          cell.classList.add('cell-yard', 'yard-' + info.color, 'yard-token-spot');
         } else if (info.type === 'yard') {
           cell.classList.add('cell-yard', 'yard-' + info.color);
-          // Inner yard spot for tokens (circles inside the quadrant)
-          cell.classList.add('yard-spot');
         } else if (info.type === 'homecol') {
           cell.classList.add('cell-homecol', 'homecol-' + info.color);
           if (info.step === 6) cell.classList.add('homecol-last');
@@ -182,15 +193,13 @@
     });
   }
 
-  function animateTokenMove(tokenEl, toCell, callback) {
-    if (!tokenEl || !toCell) {
+  function animateTokenMove(tokenEl, fromRect, toCell, callback) {
+    if (!tokenEl || !toCell || !fromRect) {
       if (callback) callback();
       return;
     }
 
-    const fromRect = tokenEl.getBoundingClientRect();
     const toRect = toCell.getBoundingClientRect();
-    const boardRect = boardEl.getBoundingClientRect();
 
     // Clone the token for animation
     const ghost = tokenEl.cloneNode(true);
