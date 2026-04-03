@@ -32,10 +32,10 @@ const YARD_CELLS = {
   blue: [[10,10],[12,10],[10,12],[12,12]],
 };
 const HOME_LANE_CELLS = {
-  red: [[7,2],[7,3],[7,4],[7,5],[7,6],[7,7]],
-  green: [[12,7],[11,7],[10,7],[9,7],[8,7],[7,7]],
-  yellow: [[2,7],[3,7],[4,7],[5,7],[6,7],[7,7]],
-  blue: [[7,12],[7,11],[7,10],[7,9],[7,8],[7,7]],
+  red:    [[2,7],[3,7],[4,7],[5,7],[6,7],[7,7]],
+  green:  [[7,2],[7,3],[7,4],[7,5],[7,6],[7,7]],
+  yellow: [[7,12],[7,11],[7,10],[7,9],[7,8],[7,7]],
+  blue:   [[12,7],[11,7],[10,7],[9,7],[8,7],[7,7]],
 };
 const HOME_BLOCKS = { red: [0,0], green: [9,0], yellow: [0,9], blue: [9,9] };
 const EXIT_STRIPS = {
@@ -765,10 +765,10 @@ function drawCenterMotif(geometry) {
   const l = offsetX + 6 * cell, t = offsetY + 6 * cell, ri = offsetX + 9 * cell, b = offsetY + 9 * cell;
 
   const tri = (p1, p2, color) => { ctx.beginPath(); ctx.moveTo(...p1); ctx.lineTo(...p2); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fillStyle = BOARD_COLORS[color].bg; ctx.fill(); };
-  tri([l, t], [ri, t], 'red');
-  tri([ri, t], [ri, b], 'green');
-  tri([ri, b], [l, b], 'blue');
-  tri([l, b], [l, t], 'yellow');
+  tri([l, t], [ri, t], 'green');
+  tri([ri, t], [ri, b], 'blue');
+  tri([ri, b], [l, b], 'yellow');
+  tri([l, b], [l, t], 'red');
 
   ctx.strokeStyle = 'rgba(60, 40, 10, 0.4)'; ctx.lineWidth = 1.5;
   ctx.beginPath();
