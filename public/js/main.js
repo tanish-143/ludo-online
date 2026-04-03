@@ -128,6 +128,8 @@
     const player = state.players.find(p => p.color === color);
     const token = player.tokens.find(t => t.id === tokenId);
     const fromCoord = G.getTokenCoord(token);
+    // Capture the token's bounding rect BEFORE renderBoard() moves it to the new cell.
+    // If captured after renderBoard(), fromRect would equal toCell's rect and no animation occurs.
     const fromCell = fromCoord ? UI.getCell(fromCoord[0], fromCoord[1]) : null;
     const fromRect = fromCell ? fromCell.getBoundingClientRect() : null;
 

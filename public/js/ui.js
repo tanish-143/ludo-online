@@ -193,6 +193,11 @@
     });
   }
 
+  // Animate a token sliding from its previous cell to its new cell.
+  // fromRect: DOMRect captured BEFORE renderBoard() re-renders the token to its new position.
+  // toCell:   the DOM element of the destination cell (already rendered at the new position).
+  // This separation is critical — if fromRect were captured after renderBoard(), the ghost
+  // would start at the destination and the animation would be invisible.
   function animateTokenMove(tokenEl, fromRect, toCell, callback) {
     if (!tokenEl || !toCell || !fromRect) {
       if (callback) callback();

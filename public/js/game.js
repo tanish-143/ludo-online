@@ -28,12 +28,12 @@
   // Safe positions (1-based path positions)
   const SAFE_POS = new Set([1, 9, 14, 19, 27, 31, 40, 44]);
 
-  // Home base yard coordinates for display (not on path)
+  // Home base yard coordinates for token display (only first 4 used; 1 per token)
   const HOME_YARD = {
-    red:    [[1,1],[1,2],[2,1],[2,2],[3,1],[3,2]],
-    green:  [[1,12],[1,13],[2,12],[2,13],[3,12],[3,13]],
-    yellow: [[11,12],[11,13],[12,12],[12,13],[13,12],[13,13]],
-    blue:   [[11,1],[11,2],[12,1],[12,2],[13,1],[13,2]]
+    red:    [[1,1],[1,2],[2,1],[2,2]],
+    green:  [[1,12],[1,13],[2,12],[2,13]],
+    yellow: [[11,12],[11,13],[12,12],[12,13]],
+    blue:   [[11,1],[11,2],[12,1],[12,2]]
   };
 
   const COLORS = ['red', 'green', 'yellow', 'blue'];
